@@ -1,0 +1,17 @@
+{% extends 'bootstrap/base.html' %}
+
+<html class="no-js" lang="">
+<body>
+{% import 'bootstrap/wtf.html' as wtf %}
+
+ <h1>{{ _('Make Payments') }}</h1>
+
+    <div class="row">
+        <div class="col-md-6">
+        	<p class="justify-content-center">Set the customer's M-Pesa number to match 2547********</p>
+        	{{ wtf.quick_form(payments) }}
+        </div>
+    </div>
+    
+</body>
+</html>
