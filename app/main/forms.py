@@ -8,5 +8,4 @@ class MakePayment(FlaskForm):
     mobile = StringField(_('Mpesa Number'), validators=[DataRequired()])
     charges = StringField(_('Amount'), validators=[DataRequired()])
     
-    request = SubmitField(_('Request Payment'))
 
