@@ -54,7 +54,7 @@
 <script>
 $(document).ready(function() {
     $('form').submit(function (e) {
-        $("form-messages").text("");
+        
         $("#wait").css("display", "block");
         var url = "{{ url_for('main.request_payment') }}"; // send the form data here.
         $.ajax({
@@ -88,7 +88,7 @@ $(document).ready(function() {
         .fail(function(response){
             console.log(response)
             $("#wait").css("display","none");
-            $("#form-messages").text(response);
+            $("#form-messages").text('unable to complete request');
         });
         e.preventDefault(); // block the traditional submission of the form.
     });

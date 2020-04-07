@@ -46,10 +46,9 @@ def request_payment():
     
     #todo brij direct transaction
     
-    try:
-        response = brij.get_mpesa_services().mpesa_to_acc(amount, valid_number, valid_number, description='test payment')
-    except Exception:
-        return jsonify({'ResponseCode':400, 'error':'Unable to complete request'})
+    
+    response = brij.get_mpesa_services().mpesa_to_acc(amount, valid_number, valid_number, description='test payment')
+    print(response.json())
     
     '''transaction = Transaction(
         amount=amount, 
@@ -58,17 +57,16 @@ def request_payment():
     db.session.add(transaction)
     db.session.commit()'''
     if response.json()['ResponseCode'] == '0':
-        return jsonify(response.json())
-    return jsonify({'ResponseCode':400, 'error':'Unable to complete request'})
+        return jsonify(response.text)
+    return jsonify("{'ResponseCode':400, 'error':'Unable to complete request'}")
     
 @bp.route('/validate-payment/<merchant_id>', methods=['POST'])
 def validate_payment(merchant_id):
-    try:
-        response = brij.validate_mpesa_transaction(merchant_id, 'direct')
-    except Exception:
-        return jsonify({'ResponseCode':400, 'error':'Unable to complete request'})
+    
+    response = brij.validate_mpesa_transaction(merchant_id, 'direct')
+    
     if response.json()['status']:
-        return jsonify (response.json())
-    return jsonify({'ResponseCode':400,'error':'unable to complete request'})
+        return jsonify (response.text)
+    return jsonify("{'ResponseCode':400,'error':'unable to complete request'}")
     
     
