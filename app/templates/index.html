@@ -1,75 +1,107 @@
-<html class="no-js" lang="">
+<html class="no-js" lang="en">
 <head>
 	<title>Example brij app</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 	<script src="http://code.jquery.com/jquery-1.8.3.min.js"></script>
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"></script>
 </head>
 <body>
 {% import 'bootstrap/wtf.html' as wtf %}
+<div class="jumbotron text-center">
+     <h1>{{ _('Make Payments') }}</h1>
+     <p>make online payment integration seamless</p>
+</div>
 
- <h1>{{ _('Make Payments') }}</h1>
-
-    <div class="row">
-        <div class="col-md-6" id="input">
-        	<p class="justify-content-center">Set the customer's M-Pesa number to match 2547********</p>
-        	<form id="pay-form">
-        	    <div class="field">
+<div class="container">
+    <div id="input">
+    	<p class="justify-content-center">Set the customer's M-Pesa number to match 2547********</p>
+    	<form id="pay-form" class="form-inline">
+    	    <div class="row">
+    	        <div class="col">
         	        <label>Amount</label>
+        	        </br>
         	        {{payments.charges}}
         	    </div>
-        	    <div class="field">
+        	    <div class="col">
         	        <label>Mpesa number</label>
+        	        </br>
         	        {{payments.mobile}}
         	    </div>
-        	    <div class="field">
-        	        <input type="submit" value="Request" class="btn btn-primary btn-lg" data-loading-text="<i class='fa fa-spinner fa-spin'</i> Processing order"/>
+        	    </br>
+        	    <div class="col">
+        	        <input id="submit" type="submit" value="Request" class="btn btn-primary btn-lg" data-loading-text="<i class='fa fa-spinner fa-spin'</i> Processing order"/>
         	    </div>
-        	</form>
-        </div>
-        <div id="wait" style="display: none; width: 69px; height: 89px; border: 1px; solid: black; position: absolute; top:50%; left:50%; padding:2px">
-            <img src="{{ url_for('static', filename='img/wait.gif') }}" width="64" height="64" />
-            <br>
-            Loading...
-        </div>
+    	    </div>
+    	</form>
     </div>
+    <div id="wait" style="display: none; width: 69px; height: 89px; border: 1px; solid: black; position: absolute; top:50%; left:50%; padding:2px">
+        <img src="{{ url_for('static', filename='img/wait.gif') }}" width="64" height="64" />
+        <br>
+        Loading...
+    </div>
+    <div id="validation" style="display: none; width: 69px; height: 89px; border: 1px; solid: black; position: absolute; top:50%; left:50%; padding:2px">
+        <img src="{{ url_for('static', filename='img/wait.gif') }}" width="64" height="64" />
+        <br>
+        waiting for customer to pay...
+    </div>
+    
     <div class="row">
         <div id="form-messages"></div>
     </div>
-    
-    <script>
-    $(document).ready(function() {
-        $('form').submit(function (e) {
-            $("#wait").css("display", "block");
-            var url = "{{ url_for('main.request_payment') }}"; // send the form data here.
-            $.ajax({
-                type: "POST",
-                url: url,
-                data: $('form').serialize(), // serializes the form's elements.
-            })
-            .done(function(response){
-                $("#wait").css("display","none");
-                $("#form-messages").text(response)
-                console.log(response)  // display the returned data in the console.
-            })
-            .fail(function(response){
-                console.log(response)  
-                // display the returned data in the console.
-                $("#wait").css("display","none");
-                $("#form-messages").text(response)
-            });
-            e.preventDefault(); // block the traditional submission of the form.
-        });
-
-        // Inject our CSRF token into our AJAX request.
-        $.ajaxSetup({
-            beforeSend: function(xhr, settings) {
-                if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
-                    xhr.setRequestHeader("X-CSRFToken", "{{ payments.csrf_token._value() }}")
-                }
-            }
+</div>
+<script>
+$(document).ready(function() {
+    $('form').submit(function (e) {
+        $("form-messages").text("");
+        $("#wait").css("display", "block");
+        var url = "{{ url_for('main.request_payment') }}"; // send the form data here.
+        $.ajax({
+            type: "POST",
+            url: url,
+            data: $('form').serialize(), // serializes the form's elements.
         })
+        .done(function(response){
+            $("#form-messages").text(response);
+            $("#wait").css("display", "none");
+            $("validation").css("display","block");
+            if (response.ResponseCode == '0'){
+                var validationUrl= "{{ url_for('main.validate_payment', merchant_id="+response.MerchantRequestID+") }}";
+                $.ajax({
+                    type: "POST",
+                    url: validationUrl,
+                })
+                .done(function(val_response){
+                    $("#validation").css("display","none");
+                    $("#form-messages").text(response+"\n"+val_response);
+                })
+                .fail(function(val_response){
+                    $("#validation").css("display","none");
+                    $("#form-messages").text(response+"\n validation error\n"+val_response);
+                });
+                
+            }
+            
+            
+        })
+        .fail(function(response){
+            console.log(response)
+            $("#wait").css("display","none");
+            $("#form-messages").text(response);
+        });
+        e.preventDefault(); // block the traditional submission of the form.
     });
+
+    // Inject our CSRF token into our AJAX request.
+    $.ajaxSetup({
+        beforeSend: function(xhr, settings) {
+            if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                xhr.setRequestHeader("X-CSRFToken", "{{ payments.csrf_token._value() }}");
+            }
+        }
+    })
+});
 </script>
     
 </body>

@@ -11,6 +11,9 @@ from app.main import bp
 from app.models import Transaction
 from app.main.forms import MakePayment
 from brij.mpesa import MpesaService
+from brij.loader import BrijLoader
+
+brij = BrijLoader(app_id=os.environ.get('BRIJ_APP_ID'), app_key=os.environ.get('BRIJ_APP_KEY'))
 
 '''@bp.route('/favicon.ico') 
 def favicon(): 
@@ -42,8 +45,11 @@ def request_payment():
     valid_number = validate_mpesa_number(mpesa_number)
     
     #todo brij direct transaction
-    to_acc = MpesaService(app_id=os.environ.get('BRIJ_APP_ID'), app_key=os.environ.get('BRIJ_APP_KEY'))
-    response = to_acc.mpesa_to_acc(amount, valid_number, valid_number, description='test payment')
+    
+    try:
+        response = brij.get_mpesa_services().mpesa_to_acc(amount, valid_number, valid_number, description='test payment')
+    except Exception:
+        return jsonify({'ResponseCode':400, 'error':'Unable to complete request'})
     
     '''transaction = Transaction(
         amount=amount, 
@@ -51,4 +57,18 @@ def request_payment():
     )
     db.session.add(transaction)
     db.session.commit()'''
-    return jsonify(response.text)
+    if response.json()['ResponseCode'] == '0':
+        return jsonify(response.json())
+    return jsonify({'ResponseCode':400, 'error':'Unable to complete request'})
+    
+@bp.route('/validate-payment/<merchant_id>', methods=['POST'])
+def validate_payment(merchant_id):
+    try:
+        response = brij.validate_mpesa_transaction(merchant_id, 'direct')
+    except Exception:
+        return jsonify({'ResponseCode':400, 'error':'Unable to complete request'})
+    if response.json()['status']:
+        return jsonify (response.json())
+    return jsonify({'ResponseCode':400,'error':'unable to complete request'})
+    
+    
