@@ -44,9 +44,7 @@ def request_payment():
     amount = form.charges.data
     valid_number = validate_mpesa_number(mpesa_number)
     
-    #todo brij direct transaction
-    
-    
+    # brij direct transaction
     response = brij.get_mpesa_services().mpesa_to_acc(amount, valid_number, valid_number, description='test payment')
     print(response.json())
     
@@ -56,17 +54,29 @@ def request_payment():
     )
     db.session.add(transaction)
     db.session.commit()'''
-    if response.json()['ResponseCode'] == '0':
-        return jsonify(response.text)
-    return jsonify("{'ResponseCode':400, 'error':'Unable to complete request'}")
+    #print(response.json())
+    try:
+        if response.json()['ResponseCode'] == '0':
+            return jsonify(response.text)
+    except:
+        response.status = 400
+        return jsonify(response.json())
+    response.status = 400
+    return jsonify(response.json())
     
 @bp.route('/validate-payment/<merchant_id>', methods=['POST'])
 def validate_payment(merchant_id):
     
     response = brij.validate_mpesa_transaction(merchant_id, 'direct')
+    print(response.json())
     
-    if response.json()['status']:
-        return jsonify (response.text)
-    return jsonify("{'ResponseCode':400,'error':'unable to complete request'}")
+    try:
+        if response.json()['status']:
+            return jsonify(response.text)
+    except:
+        response.status = 400
+        return jsonify(response.json())
+    response.status = 400
+    return jsonify(response.json())
     
     

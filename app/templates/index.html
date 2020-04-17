@@ -1,9 +1,9 @@
-<html class="no-js" lang="en">
+<html lang="en">
 <head>
 	<title>Example brij app</title>
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
-	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+	
 	<script src="http://code.jquery.com/jquery-1.8.3.min.js"></script>
 	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"></script>
 </head>
@@ -31,31 +31,38 @@
         	    </div>
         	    </br>
         	    <div class="col">
-        	        <input id="submit" type="submit" value="Request" class="btn btn-primary btn-lg" data-loading-text="<i class='fa fa-spinner fa-spin'</i> Processing order"/>
+        	        <input id="req" type="submit" value="Request" class="btn btn-primary btn-lg"/>
         	    </div>
     	    </div>
     	</form>
     </div>
-    <div id="wait" style="display: none; width: 69px; height: 89px; border: 1px; solid: black; position: absolute; top:50%; left:50%; padding:2px">
+    
+    <div id="wait" class="text-center" style="display: none; width: 69px; height: 89px; border: 1px; solid: black; position: absolute;">
         <img src="{{ url_for('static', filename='img/wait.gif') }}" width="64" height="64" />
         <br>
-        Loading...
+        Requesting...
     </div>
-    <div id="validation" style="display: none; width: 69px; height: 89px; border: 1px; solid: black; position: absolute; top:50%; left:50%; padding:2px">
+    <p id="form-messages"></p>
+    <button id="validate" style="display:none" class="btn btn-primary">Validate</button>
+    <div id="validation" style="display: none; width: 69px; height: 89px; border: 1px; solid: black; position: absolute;">
         <img src="{{ url_for('static', filename='img/wait.gif') }}" width="64" height="64" />
         <br>
-        waiting for customer to pay...
+        validating...
     </div>
     
-    <div class="row">
-        <div id="form-messages"></div>
+    <div class="row text-center alert-danger" style="display:none" id="error-display">
+        <p class="glyphicon glyphicon-alert-sign"> error !!!</p>
+        <div id="error-message"></div>
     </div>
+    <div id="val-messages"></div>
 </div>
 <script>
 $(document).ready(function() {
     $('form').submit(function (e) {
         
         $("#wait").css("display", "block");
+        $('#req').css('display','none');
+        $("#error-display").css('display','none');
         var url = "{{ url_for('main.request_payment') }}"; // send the form data here.
         $.ajax({
             type: "POST",
@@ -63,44 +70,81 @@ $(document).ready(function() {
             data: $('form').serialize(), // serializes the form's elements.
         })
         .done(function(response){
-            $("#form-messages").text(response);
+            req_response = response;
+            
             $("#wait").css("display", "none");
-            $("validation").css("display","block");
-            if (response.ResponseCode == '0'){
-                var validationUrl= "{{ url_for('main.validate_payment', merchant_id="+response.MerchantRequestID+") }}";
-                $.ajax({
-                    type: "POST",
-                    url: validationUrl,
-                })
-                .done(function(val_response){
-                    $("#validation").css("display","none");
-                    $("#form-messages").text(response+"\n"+val_response);
-                })
-                .fail(function(val_response){
-                    $("#validation").css("display","none");
-                    $("#form-messages").text(response+"\n validation error\n"+val_response);
-                });
-                
+            
+            if (response.hasOwnProperty('error')){
+                $("#error-display").css("display","block");
+                $("#error-message").text(response["message"]);
+                $("#req").css("display","block");
+            }else{
+                $("#req").css("display","none");
+                $("#form-messages").text(response);
+                $("validation").css("display","block");
+                $("#validation").css("display:","none");
+                validate_payment(response);
             }
-            
-            
         })
-        .fail(function(response){
-            console.log(response)
+        .fail(function(xhr, status, error){
             $("#wait").css("display","none");
-            $("#form-messages").text('unable to complete request');
+            $('#req').css('display', 'block');
+            $('#submit').css('display', 'block')
+            $("#error-message").text('unable to complete request'+status);
+            $("#error-display").css("display","block");
+            
         });
         e.preventDefault(); // block the traditional submission of the form.
     });
+    
+    function validate_payment(response){
+        $("#validation").css("display","block");
+        $("#val-messages").css("display","none");
+        
+        var validationUrl= "{{ url_for('main.validate_payment', merchant_id="+response.MerchantRequestID+") }}";
+        $.ajax({
+            type: "POST",
+            url: validationUrl,
+        })
+        .done(function(val_response){
+            $("#validation").css("display","none");
+            $("#val-messages").css("display","block");
+            
+            if (val_response.hasOwnProperty('valid')){
+                if(val_response["status"] == true){
+                    $("#validate").css("display","none");
+                    
+                }else{
+                    $("#validate").css("display","block");
+                }
+                $("#val-messages").text('validity: '+val_response["valid"]+' state '+val_response["state"]);
+            }else{
+                $("#validate").css("display","block");
+                $("#val-messages").text(val_response);
+            }
+        })
+        .fail(function(xhr, status, error){
+            $("#validation").css("display","none");
+            $("#val-messages").css("display","block");
+            $("#error-message").text(error+'\n unable to Validate payment. Check your connection');
+            $("#error-display").css('display','block');
+            $("#validate").css("display:block");
+        });
+    }
 
     // Inject our CSRF token into our AJAX request.
     $.ajaxSetup({
         beforeSend: function(xhr, settings) {
             if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
-                xhr.setRequestHeader("X-CSRFToken", "{{ payments.csrf_token._value() }}");
+                xhr.setRequestHeader("X-CSRFToken", "{{ payments.csrf_token._value() }}")
             }
         }
-    })
+    });
+    
+    $("#validate").click(function(){
+        $(this).hide();
+        validate_payment(req_response);
+    });
 });
 </script>
     
