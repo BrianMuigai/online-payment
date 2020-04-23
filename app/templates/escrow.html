@@ -1,0 +1,174 @@
+<html lang="en">
+<head>
+	<title>Example brij app</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css">
+	<style type="text/css">
+	    body {margin:2rem;}
+
+        .tab-pane {
+          padding:2rem 0;
+        }
+        
+        .nav-link {
+        background: linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(3,3,37,0.1) 100%);
+        }
+        .nav-link.active {
+          font-weight: bold;
+          background:#fff;
+        }
+	</style>
+	
+	<script src="http://code.jquery.com/jquery-1.8.3.min.js"></script>
+
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.min.js"></script>
+</head>
+<body>
+{% import 'bootstrap/wtf.html' as wtf %}
+<div class="jumbotron text-center">
+     <h1>{{ _('Make Payments') }}</h1>
+     <p>make online payment integration seamless</p>
+</div>
+
+<div class="container">
+    <div id="input">
+    	<p class="justify-content-center">Set the customer's M-Pesa number to match 2547********</p>
+    	<ul class="nav nav-tabs" id="options-tabs" rilek="tablist">
+    	    <li class="nav-item"><a href="{{url_for('main.index')}}" class="nav-link" id="dir-tab" data-toggle="tab" aria-controls="dir" aria-selected="true" role="tab">Direct</a></li>
+    	    <li class="nav-item"><a data-toggle="tab" href="{{url_for('main.escrow')}}" class="nav-link active" role="tab" id="esc-tab" aria-controls="esc" aria-selected="false" >Escrow</a></li>
+    	</ul>
+    	<form id="esc" class="tab-pane fade show" role="tabpanel" aria-labelledby="esc-tab">
+    	    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+	        <div class="form-group">
+    	        <label for="amount">Amount</label>
+    	        <input placeholder="Enter Amount" class="form-control" name="amount">
+    	    </div>
+    	    <div class="form-group">
+    	        <label for="mobile">Mpesa number</label>
+    	        <input placeholder="M-pesa Phone" class="form-control" name="mobile">
+    	    </div>
+    	    <div class="form-group">
+    	        <label for="recepient">Recepient number/Email</label>
+    	        <input class="form-control" name="recepient" placeholder="Recepient">
+    	        </div>
+    	    </div>
+    	    
+	        <input id="req" type="submit" value="Request" class="btn btn-primary btn-lg"/>
+    	    </div>
+    	    
+    	</form>
+    </div>
+    
+    <div id="wait" class="text-center" style="display: none; width: 69px; height: 89px; border: 1px; solid: black; position: absolute;">
+        <img src="{{ url_for('static', filename='img/wait.gif') }}" width="64" height="64" />
+        <br>
+        Requesting...
+    </div>
+    <p id="form-messages"></p>
+    <button id="validate" style="display:none" class="btn btn-primary">Validate</button>
+    <div id="validation" style="display: none; width: 69px; height: 89px; border: 1px; solid: black; position: absolute;">
+        <img src="{{ url_for('static', filename='img/wait.gif') }}" width="64" height="64" />
+        <br>
+        validating...
+    </div>
+    
+    <div class="row text-center alert-danger" style="display:none" id="error-display">
+        <p class="glyphicon glyphicon-alert-sign"> error !!!</p>
+        <div id="error-message"></div>
+    </div>
+    <div id="val-messages"></div>
+</div>
+<script>
+$(document).ready(function() {
+    $('#esc').submit(function (e) {
+        
+        $("#wait").css("display", "block");
+        $('#req').css('display','none');
+        $("#error-display").css('display','none');
+        var url = "{{ url_for('main.request_escrow_payment') }}"; // send the form data here.
+        $.ajax({
+            type: "POST",
+            url: url,
+            data: $('form').serialize(), // serializes the form's elements.
+        })
+        .done(function(response){
+            req_response = response;
+            
+            $("#wait").css("display", "none");
+            
+            if (response.hasOwnProperty('error')){
+                $("#error-display").css("display","block");
+                $("#error-message").text(response["message"]);
+                $("#req").css("display","block");
+            }else{
+                $("#req").css("display","none");
+                $("#form-messages").text(response);
+                $("validation").css("display","block");
+                $("#validation").css("display:","none");
+                validate_payment(response);
+            }
+        })
+        .fail(function(xhr, status, error){
+            $("#wait").css("display","none");
+            $('#req').css('display', 'block');
+            $('#submit').css('display', 'block')
+            $("#error-message").text('unable to complete request'+status);
+            $("#error-display").css("display","block");
+            
+        });
+        e.preventDefault(); // block the traditional submission of the form.
+    });
+    
+    function validate_payment(response){
+        $("#validation").css("display","block");
+        $("#val-messages").css("display","none");
+        
+        var validationUrl= "{{ url_for('main.validate_payment', merchant_id="+response.MerchantRequestID+") }}";
+        $.ajax({
+            type: "POST",
+            url: validationUrl,
+        })
+        .done(function(val_response){
+            $("#validation").css("display","none");
+            $("#val-messages").css("display","block");
+            
+            if (val_response.hasOwnProperty('valid')){
+                if(val_response["status"] == true){
+                    $("#validate").css("display","none");
+                    
+                }else{
+                    $("#validate").css("display","block");
+                }
+                $("#val-messages").text('validity: '+val_response["valid"]+' state '+val_response["state"]);
+            }else{
+                $("#validate").css("display","block");
+                $("#val-messages").text(val_response);
+            }
+        })
+        .fail(function(xhr, status, error){
+            $("#validation").css("display","none");
+            $("#val-messages").css("display","block");
+            $("#error-message").text(error+'\n unable to Validate payment. Check your connection');
+            $("#error-display").css('display','block');
+            $("#validate").css("display:block");
+        });
+    }
+
+    // Inject our CSRF token into our AJAX request.
+    $.ajaxSetup({
+        beforeSend: function(xhr, settings) {
+            if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                xhr.setRequestHeader("X-CSRFToken", "{{ csrf_token() }}")
+            }
+        }
+    });
+    
+    $("#validate").click(function(){
+        $(this).hide();
+        validate_payment(req_response);
+    });
+});
+</script>
+    
+</body>
+</html>

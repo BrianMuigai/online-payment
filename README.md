@@ -2,7 +2,11 @@
 Mpesa online payment
 
 this is an example demonstrating the usage of brij-future API ...
-consuming mpesa API has never been easier. with brij, you can easily integrate online payments with just few lines of code
+consuming mpesa API has never been easier. with brij, you can easily integrate online payments with just few lines of code 
+<div class="row">
+<img src="screenshots/one.png">
+<img src="screenshots/two.png">
+</div>
 
 ## getting started
 in order to run this sample, you'll have to:

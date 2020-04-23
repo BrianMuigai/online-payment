@@ -9,6 +9,7 @@ from flask_mail import Mail
 from flask_bootstrap import Bootstrap
 from flask_moment import Moment
 from flask_babel import Babel, lazy_gettext as _l
+from flask_wtf.csrf import CSRFProtect
 from elasticsearch import Elasticsearch
 from redis import Redis
 import rq
@@ -20,11 +21,13 @@ mail = Mail()
 bootstrap = Bootstrap()
 moment = Moment()
 babel = Babel()
+csrf = CSRFProtect()
 
 
 def create_app(config_class=Config):
     app = Flask(__name__)
     app.config.from_object(config_class)
+    csrf.init_app(app)
 
     db.init_app(app)
     with app.app_context():
