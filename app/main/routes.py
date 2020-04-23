@@ -62,7 +62,6 @@ def request_escrow_payment():
 def request_direct_payment():
     mpesa_number = request.form['mobile']
     amount = request.form['amount']
-    recepient = request.form['recepient'] or None
     valid_number = validate_mpesa_number(mpesa_number)
     
     # brij direct transaction
